@@ -1,0 +1,107 @@
+---
+title: "Reproducible Research week2"
+output: html_document
+---
+#### Loading in the data.
+```{r}
+data <- read.csv("activity.csv",as.is = TRUE)
+
+
+```
+
+#### Remove N/A values and sum 
+
+```{r}
+data1 <- data[!is.na(data$steps),]
+
+data1steps<- with(data1, tapply(steps, as.factor(data1$date), sum, na.rm = T))
+```
+### What is mean total number of steps taken per day?
+```{R,echo=FALSE}
+hist(data1steps,main = "Total number of steps taken per day", xlab = "Total number of steps")
+
+summary(data1steps)
+```
+### What is the average daily activity pattern?
+```{r,echo=FALSE}
+data1stepsmean<- with(data1, tapply(steps, interval, mean, na.rm = T))
+
+plot(names(data1stepsmean),data1stepsmean,type="l", xlab="Interval", ylab="# of Steps",main="Average Number of Steps per Day by Interval")
+
+```
+
+````{r, echo=FALSE}
+
+
+data1stepsmeanF<-data.frame(interval=names(data1stepsmean),meansteps=data1stepsmean)
+maxint<-which.max(data1stepsmeanF$meansteps)
+maxintnumber<-data1stepsmeanF[maxint,1]
+
+
+```
+
+
+### Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+
+## `r maxintnumber`
+
+
+```{r, echo=FALSE}
+missing<-sum(is.na(data))
+```
+
+### The total number of missing values is `r missing`
+
+
+```{r,echo=FALSE}
+avgsteps <- aggregate(steps ~ interval, data = data, FUN = mean)
+
+FIXNA <- numeric()
+for (i in 1:nrow(data)) {
+    obs <- data[i, ]
+    if (is.na(obs$steps)) {
+        steps <- subset(avgsteps, interval == obs$interval)$steps
+    } else {
+        steps <- obs$steps
+    }
+    FIXNA <- c(FIXNA, steps)
+}
+
+
+dataclean <- data
+dataclean$steps <- FIXNA
+```
+### What is mean total number of steps taken per day after N/A's are replaced
+
+```{R,echo=FALSE}
+datacleansteps<- with(dataclean, tapply(steps, as.factor(dataclean$date), sum, na.rm = T))
+hist(datacleansteps,main = "Total number of steps taken per day", xlab = "Total number of steps")
+```
+```{r}
+summary(datacleansteps)
+```
+The values do differ when N/A's are populated but the impact is only on the lower step intervals 
+
+### Activity Patern Weekday and Weekend
+
+```{r,echo=FALSE}
+
+dates<-dataclean$date
+dates<-as.Date(as.character(dates),"%Y-%m-%d")
+dataclean2<-dataclean
+dataclean2$day<-weekdays(dates)
+dataclean2$date<-as.Date(as.character(dates),"%Y-%m-%d")
+dataclean2$wend <- as.factor(ifelse(weekdays(dataclean2$date) %in% c("Saturday","Sunday"), "Weekend", "Weekday"))
+avgstepsweekend <- aggregate(steps ~ interval + wend, data = dataclean2, FUN = mean)
+
+```
+```{r,echo=FALSE}
+
+library(ggplot2)
+
+panel<-ggplot(avgstepsweekend,aes(x=interval,y=steps,color=wend))+ facet_grid(wend~.)+geom_line()+ 
+labs(title="Average Number of Steps Taken vs 5-min Interval on Weekday/Weekend", y="Average Number of Steps", x="5-min Interval Times Series")
+
+panel
+
+```
